@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-md w-80">
+        <h1 class="text-2xl font-bold mb-4">Register</h1>
+        <input type="text" id="name" placeholder="Enter your name" class="w-full px-3 py-2 mb-4 border border-gray-300 rounded">
+        <button onclick="captureImage('register')" class="w-full bg-blue-500 text-white py-2 rounded">Take Photo</button>
+    </div>
+
+    <div class="bg-white p-8 mt-8 rounded-lg shadow-md w-80">
+        <h1 class="text-2xl font-bold mb-4">Login</h1>
+        <button onclick="captureImage('recognize')" class="w-full bg-green-500 text-white py-2 rounded">Take Photo</button>
+    </div>
+
+    <video id="video" class="hidden"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        function captureImage(action) {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const constraints = {
+                video: {
+                    width: 1280,
+                    height: 720
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+                video.srcObject = stream;
+                video.play();
+                video.classList.remove('hidden');
+                video.classList.add('fixed', 'top-0', 'left-0', 'w-full', 'h-full', 'z-50', 'object-cover');
+                video.onclick = () => {
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const image = canvas.toDataURL('image/png');
+                    video.pause();
+                    video.srcObject.getTracks()[0].stop();
+                    video.classList.add('hidden');
+                    video.classList.remove('fixed', 'top-0', 'left-0', 'w-full', 'h-full', 'z-50', 'object-cover');
+                    submitImage(image, action);
+                };
+            });
+        }
+
+        function submitImage(image, action) {
+            const formData = new FormData();
+            formData.append('file', dataURItoBlob(image));
+            if (action === 'register') {
+                const name = document.getElementById('name').value;
+                formData.append('name', name);
+            }
+
+            fetch(`/${action}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(action === 'register' ? data.message : `Recognized as: ${data.name}`);
+            });
+        }
+
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            return new Blob([ab], {type: mimeString});
+        }
+    </script>
+</body>
+</html>
